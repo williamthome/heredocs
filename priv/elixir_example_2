@@ -1,0 +1,7 @@
+% Elixir example: https://hexdocs.pm/elixir/1.13.4/syntax-reference.html#strings
+test = """
+    This
+    Is
+    A
+    Test
+    """
