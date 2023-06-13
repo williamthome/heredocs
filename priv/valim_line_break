@@ -1,6 +1,6 @@
 foo() ->
   bar("""
-  this is a \
-  very long \
-  string\
+  this is a \\
+  very long \\
+  string\\
   """).

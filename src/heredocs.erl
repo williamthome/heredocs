@@ -20,6 +20,8 @@ do_heredocs([$",$",$"|_], {true, _} = I, Acc) ->
     {Result, _} =
         lists:foldl(
             fun
+            ($\n, {[$\\,$\\ | Acc1], _}) ->
+                {[$\n,$\\|Acc1], I};
             ($\n, {[$\\ | Acc1], _}) ->
                 {Acc1, I};
             ($\n, {Acc1, _}) ->
@@ -102,7 +104,8 @@ heredocs_test() ->
         ?aeq("This\nIs\nA\nTest\n", "elixir_example_2"),
         ?aeq("this is a\nvery long\nstring\n", "valim_example_1"),
         ?aeq("  this is a\n  very long\n  string\n", "valim_example_2"),
-        ?aeq("this is a very long string", "valim_line_break"),
+        ?aeq("this is a very long string", "valim_no_line_break"),
+        ?aeq("this is a \\\nvery long \\\nstring\\\n", "valim_line_break"),
         ?aeq("This is an example triple-quoted string.\n  Even with indents.\n", "jchrist_example_1"),
         ?aeq("  This is an example indented triple-quoted-string.\n", "jchrist_example_2"),
         ?aeq("This is an example for how to \"naturally\" de-dent it in Python.\n", "jchrist_example_3"),
