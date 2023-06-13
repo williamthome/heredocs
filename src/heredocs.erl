@@ -7,7 +7,7 @@
 heredocs([$",$",$" | Cs0]) ->
     case trim(Cs0) of
         {ok, Cs} ->
-            do_heredocs(Cs, false, []);
+            do_heredocs(Cs, push, []);
         error ->
             error(badarg)
     end;
@@ -16,7 +16,7 @@ heredocs([_|Cs]) ->
 heredocs([]) ->
     error(eof).
 
-do_heredocs([$",$",$"|_], {true, _} = I, Acc) ->
+do_heredocs([$",$",$"|_], {indent, _} = I, Acc) ->
     {Result, _} =
         lists:foldl(
             fun
@@ -26,11 +26,11 @@ do_heredocs([$",$",$"|_], {true, _} = I, Acc) ->
                 {Acc1, I};
             ($\n, {Acc1, _}) ->
                 {[$\n|Acc1], I};
-            (C, {Acc1, {true, 0}}) ->
-                {[C|Acc1], false};
-            (32, {Acc1, {true, Cnt}}) ->
-                {Acc1, {true, Cnt - 1}};
-            (_, {_, {true, _}}) ->
+            (C, {Acc1, {indent, 0}}) ->
+                {[C|Acc1], push};
+            (32, {Acc1, {indent, Cnt}}) ->
+                {Acc1, {indent, Cnt - 1}};
+            (_, {_, {indent, _}}) ->
                 % Elixir's shows a warning instead of an error:
                 % iex(1)>   """
                 % ...(1)> foo
@@ -57,18 +57,24 @@ do_heredocs([$",$",$"|_], {true, _} = I, Acc) ->
                 % "foo\n"
                 error(outdented);
             (C, {Acc1, _}) ->
-                {[C|Acc1], false}
+                {[C|Acc1], push}
             end,
             {[], I},
             lists:reverse(Acc)
         ),
     lists:reverse(Result);
+do_heredocs([$\n|Cs], skip, Acc) ->
+    do_heredocs(Cs, {indent, 0}, Acc);
 do_heredocs([$\n|Cs], _, Acc) ->
-    do_heredocs(Cs, {true, 0}, [$\n|Acc]);
-do_heredocs([32|Cs], {true, I}, Acc) ->
-    do_heredocs(Cs, {true, I+1}, [32|Acc]);
+    do_heredocs(Cs, {indent, 0}, [$\n|Acc]);
+do_heredocs([32|Cs], {indent, I}, Acc) ->
+    do_heredocs(Cs, {indent, I+1}, [32|Acc]);
+do_heredocs([$\\,$%|Cs], push, Acc) ->
+    do_heredocs(Cs, skip, Acc);
+do_heredocs([_|Cs], skip, Acc) ->
+    do_heredocs(Cs, skip, Acc);
 do_heredocs([C|Cs], _, Acc) ->
-    do_heredocs(Cs, false, [C|Acc]);
+    do_heredocs(Cs, push, [C|Acc]);
 do_heredocs([], _, _) ->
     error.
 
@@ -110,6 +116,7 @@ heredocs_test() ->
         ?aeq("  This is an example indented triple-quoted-string.\n", "jchrist_example_2"),
         ?aeq("This is an example for how to \"naturally\" de-dent it in Python.\n", "jchrist_example_3"),
         ?aeq("this should contains \"quotes\"\nand \"\"\"triple quotes\"\"\" and\nends here\n", "william_test_quotes"),
+        ?aeq("foo bar", "william_test_comment"),
         ?araise(badarg, "william_test_badarg"),
         ?araise(outdented, "william_test_outdented")
     ].
